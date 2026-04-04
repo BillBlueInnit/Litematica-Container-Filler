@@ -8,11 +8,11 @@ public class QuickShulkerWrapper implements IShulkerExtractor {
     @Override
     public boolean requestOpenShulker(int playerSlotIndex) {
         try {
-            ClientPlayNetworking.send(new OpenShulkerPacket(playerSlotIndex));
+            int packetSlot = playerSlotIndex < 9 ? playerSlotIndex + 36 : playerSlotIndex;
+            ClientPlayNetworking.send(new OpenShulkerPacket(packetSlot));
             return true;
 
         } catch (Exception e) {
-            System.err.println("[LitematicaFiller] 尝试发送 QuickShulker 数据包失败: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
