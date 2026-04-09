@@ -10,6 +10,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.lang.reflect.Field;
+import java.util.List;
+
 @Mixin(value = GuiMainMenu.class, remap = false)
 public abstract class GuiMainMenuMixin extends GuiBase {
 
@@ -21,26 +24,36 @@ public abstract class GuiMainMenuMixin extends GuiBase {
         int btnWidth = 98;
 
         try {
-            java.util.List<?> buttons = null;
-            for (java.lang.reflect.Field f : GuiBase.class.getDeclaredFields()) {
-                if (f.getType() == java.util.List.class && f.getName().toLowerCase().contains("button")) {
+            List<?> buttons = null;
+            for (Field f : GuiBase.class.getDeclaredFields()) {
+                if (List.class.isAssignableFrom(f.getType()) && f.getName().toLowerCase().contains("button")) {
                     f.setAccessible(true);
-                    buttons = (java.util.List<?>) f.get(this);
+                    buttons = (List<?>) f.get(this);
                     break;
                 }
             }
 
             if (buttons != null && !buttons.isEmpty()) {
-                int schematicManagerY = -1;
-                Object anchorBtn = null;
+                int maxX = -1;
 
                 for (Object btnObj : buttons) {
                     int btnY = (int) btnObj.getClass().getMethod("getY").invoke(btnObj);
                     int btnX = (int) btnObj.getClass().getMethod("getX").invoke(btnObj);
+                    if (btnY >= 80 && btnX > maxX) {
+                        maxX = btnX;
+                    }
+                }
 
-                    if (btnX > 80 && btnX < 180 && btnY >= 80) {
-                        if (schematicManagerY == -1 || btnY < schematicManagerY) {
-                            schematicManagerY = btnY;
+                int minY = Integer.MAX_VALUE;
+                Object anchorBtn = null;
+
+                for (Object btnObj : buttons) {
+                    int btnX = (int) btnObj.getClass().getMethod("getX").invoke(btnObj);
+                    int btnY = (int) btnObj.getClass().getMethod("getY").invoke(btnObj);
+
+                    if (btnY >= 80 && Math.abs(btnX - maxX) < 10) {
+                        if (btnY < minY) {
+                            minY = btnY;
                             anchorBtn = btnObj;
                         }
                     }
@@ -48,10 +61,11 @@ public abstract class GuiMainMenuMixin extends GuiBase {
 
                 if (anchorBtn != null) {
                     int anchorX = (int) anchorBtn.getClass().getMethod("getX").invoke(anchorBtn);
+                    int anchorY = (int) anchorBtn.getClass().getMethod("getY").invoke(anchorBtn);
                     int anchorWidth = (int) anchorBtn.getClass().getMethod("getWidth").invoke(anchorBtn);
 
                     targetX = anchorX + anchorWidth + 4;
-                    targetY = schematicManagerY;
+                    targetY = anchorY;
                     btnWidth = anchorWidth;
                 }
 
@@ -73,7 +87,6 @@ public abstract class GuiMainMenuMixin extends GuiBase {
         } catch (Exception ignored) {}
 
         String btnText = StringUtils.translate("litematica_container_filler.gui.title.configs");
-
         ButtonGeneric configBtn = new ButtonGeneric(targetX, targetY, btnWidth, 20, btnText);
 
         this.addButton(configBtn, (btn, mouseButton) -> {
