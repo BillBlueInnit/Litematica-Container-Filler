@@ -48,9 +48,3 @@ processResources {
         expand "mod_version": project.mod_version
     }
 }
-
-jar {
-    from("LICENSE") {
-        rename { "${it}_${archivesName.get()}"}
-    }
-}

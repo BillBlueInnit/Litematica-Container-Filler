@@ -402,7 +402,7 @@ public class AutoFillerStateMachine {
                 int count = 0;
                 for (Item item : trueMissingTypes) {
                     if (count > 0) sb.append(", ");
-                    sb.append(item.getName().getString());
+                    sb.append(item.getDescriptionId());
                     count++;
                     if (count >= 3 && trueMissingTypes.size() > 3) {
                         sb.append(Component.translatable("litematica_container_filler.message.etc").getString());
@@ -465,7 +465,7 @@ public class AutoFillerStateMachine {
             ItemStack s = client.player.getInventory().getItem(i);
             if (s.getItem() instanceof BlockItem bi && bi.getBlock() instanceof ShulkerBoxBlock) {
                 ItemContainerContents c = s.get(DataComponents.CONTAINER);
-                long size = c == null ? 0 : c.stream().filter(s -> !s.isEmpty()).count();
+                long size = c == null ? 0 : c.allItemsCopyStream().filter(stack -> !stack.isEmpty()).count();
                 if (size < 27) {
                     targetShulker = i;
                     break;
@@ -946,7 +946,7 @@ public class AutoFillerStateMachine {
                 if (s.getItem() instanceof BlockItem bi && bi.getBlock() instanceof ShulkerBoxBlock) {
                     ItemContainerContents c = s.get(DataComponents.CONTAINER);
                     if (c != null) {
-                        for (ItemStack inner : c.nonEmptyItems()) {
+                        for (ItemStack inner : c.allItemsCopyStream().toList()) {
                             if (ItemMatcher.isSameItem(inner, req)) {
                                 slots.add(i);
                                 amountToFind -= inner.getCount();
@@ -1599,7 +1599,7 @@ public class AutoFillerStateMachine {
             if (s.getItem() instanceof BlockItem bi && bi.getBlock() instanceof ShulkerBoxBlock) {
                 ItemContainerContents c = s.get(DataComponents.CONTAINER);
                 if (c != null) {
-                    for (ItemStack inner : c.nonEmptyItems()) {
+                    for (ItemStack inner : c.allItemsCopyStream().toList()) {
                         if (ItemMatcher.isSameItem(inner, target)) return true;
                     }
                 }

@@ -6,11 +6,11 @@
   "mixins": [],
   "client": [
     "ScreenInterceptorMixin",
-    "ClientPlayNetworkHandlerMixin",
+    "ClientPacketListenerMixin",
     "GuiMainMenuMixin",
     "MixinGuiMaterialList",
     "MixinBlockEntity",
-    "MixinLootableContainerBlockEntity",
+    "MixinRandomizableContainerBlockEntity",
     "MixinCrafterBlockEntity",
     "MixinSchematicPlacement"
   ],

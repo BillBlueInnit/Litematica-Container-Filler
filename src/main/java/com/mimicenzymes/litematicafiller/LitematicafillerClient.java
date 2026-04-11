@@ -92,7 +92,7 @@ public class LitematicafillerClient implements ClientModInitializer {
             }
         });
 
-        LevelRenderEvents.AFTER_ENTITIES.register(context -> {
+        LevelRenderEvents.AFTER_OPAQUE_TERRAIN.register(context -> {
             if (com.mimicenzymes.litematicafiller.config.Configs.ENABLE_MOD.getBooleanValue()) {
                 ContainerHighlighter.onRender(context);
             }
