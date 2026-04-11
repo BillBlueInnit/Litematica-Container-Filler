@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "id": "litematica_container_filler",
   "version": "0.9",
-  "name": "投影容器填充机",
-  "description": "自动投影容器填充模组",
+  "name": "Litematica Container Filler",
+  "description": "Litematica mod for auto-filling containers",
   "authors": ["MimicEnzymes"],
   "contact": {},
   "license": "MIT",
@@ -22,7 +22,7 @@
   ],
   "depends": {
     "fabricloader": ">=0.15.11",
-    "minecraft": ">=26.1 <=26.1.2",
+    "minecraft": ">=26.1 <=26.2",
     "java": ">=21",
     "malilib": "*",
     "litematica": "*"
