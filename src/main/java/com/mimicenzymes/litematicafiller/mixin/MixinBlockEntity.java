@@ -1,9 +1,9 @@
 package com.mimicenzymes.litematicafiller.mixin;
 
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.core.HolderLookup;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -13,15 +13,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class MixinBlockEntity {
 
     @Inject(method = {
-            "createNbt",
-            "createNbtWithIdentifyingData"
+            "saveWithoutMetadata",
+            "saveWithFullMetadata"
     }, at = @At("RETURN"))
-    private void onSerializeNbtAny(RegistryWrapper.WrapperLookup registries, CallbackInfoReturnable<NbtCompound> cir) {
-        net.minecraft.world.World world = ((BlockEntity) (Object) this).getWorld();
-        if (world != null && world.isClient() && world.getClass().getSimpleName().contains("Schematic")) {
-            NbtCompound nbt = cir.getReturnValue();
+    private void onSerializeNbtAny(HolderLookup.Provider registries, CallbackInfoReturnable<CompoundTag> cir) {
+        net.minecraft.world.level.Level world = ((BlockEntity) (Object) this).getLevel();
+        if (world != null && world.isClientSide() && world.getClass().getSimpleName().contains("Schematic")) {
+            CompoundTag nbt = cir.getReturnValue();
             if (nbt != null && nbt.contains("Items")) {
-                com.mimicenzymes.litematicafiller.core.MaterialReplacer.replaceInNbtList((NbtList) nbt.get("Items"), registries);
+                com.mimicenzymes.litematicafiller.core.MaterialReplacer.replaceInNbtList((ListTag) nbt.get("Items"), registries);
             }
         }
     }

@@ -2,7 +2,7 @@ package com.mimicenzymes.litematicafiller.dependency;
 
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -12,7 +12,7 @@ import java.util.Map;
 public class TechUtilsDeceiver {
 
     public static void forceTechUtilsUpdate() {
-        MinecraftClient.getInstance().execute(() -> {
+        Minecraft.getInstance().execute(() -> {
             try {
                 boolean refreshed = false;
                 for (Method m : SchematicWorldHandler.class.getMethods()) {

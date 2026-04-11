@@ -6,15 +6,17 @@ import com.mimicenzymes.litematicafiller.core.MaterialReplacer;
 import com.mimicenzymes.litematicafiller.core.RealContainerCache;
 import fi.dy.masa.litematica.materials.MaterialListEntry;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.core.BlockPos;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,7 +38,7 @@ public class FillMaterialCalculator {
 
         public ItemStackKey(ItemStack stack) {
             this.item = stack.getItem();
-            net.minecraft.text.Text name = stack.get(DataComponentTypes.CUSTOM_NAME);
+            net.minecraft.network.chat.Component name = stack.get(DataComponents.CUSTOM_NAME);
             this.customName = name != null ? name.getString() : "";
         }
 
@@ -61,9 +63,9 @@ public class FillMaterialCalculator {
     }
 
     private static class NbtContext {
-        final NbtCompound nbt;
+        final CompoundTag nbt;
         final Object placement;
-        NbtContext(NbtCompound nbt, Object placement) {
+        NbtContext(CompoundTag nbt, Object placement) {
             this.nbt = nbt;
             this.placement = placement;
         }
@@ -85,7 +87,7 @@ public class FillMaterialCalculator {
         itemStatsCache.clear();
         int foundContainersAll = 0, foundContainersLayer = 0;
         int foundItemsAll = 0, foundItemsLayer = 0;
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
 
         List<Object> placementsToScan = new ArrayList<>();
 
@@ -95,8 +97,8 @@ public class FillMaterialCalculator {
             placementsToScan.add(input);
         } else {
             Object gui = null;
-            if (client.currentScreen != null && client.currentScreen.getClass().getSimpleName().contains("MaterialList")) {
-                gui = client.currentScreen;
+            if (client.screen != null && client.screen.getClass().getSimpleName().contains("MaterialList")) {
+                gui = client.screen;
             }
             if (gui != null) {
                 Class<?> currGuiCls = gui.getClass();
@@ -179,22 +181,22 @@ public class FillMaterialCalculator {
         Set<Object> visitedObj = Collections.newSetFromMap(new IdentityHashMap<>());
 
         for (Object placement : placementsToScan) {
-            List<NbtCompound> nbts = new ArrayList<>();
+            List<CompoundTag> nbts = new ArrayList<>();
             extractNbtsFromMemory(placement, nbts, visitedObj, 0);
 
             BlockPos origin = extractOrigin(placement);
-            if (origin == null) origin = BlockPos.ORIGIN;
+            if (origin == null) origin = BlockPos.ZERO;
 
-            for (NbtCompound nbt : nbts) {
+            for (CompoundTag nbt : nbts) {
                 if (nbt.contains("x") && nbt.contains("y") && nbt.contains("z")) {
                     int nx = getIntFromNbt(nbt.get("x"));
                     int ny = getIntFromNbt(nbt.get("y"));
                     int nz = getIntFromNbt(nbt.get("z"));
 
                     BlockPos directPos = new BlockPos(nx, ny, nz);
-                    BlockPos offsetPos = origin.add(nx, ny, nz);
-                    double distDirect = directPos.getSquaredDistance(origin);
-                    double distOffset = offsetPos.getSquaredDistance(origin);
+                    BlockPos offsetPos = origin.offset(nx, ny, nz);
+                    double distDirect = directPos.distSqr(origin);
+                    double distOffset = offsetPos.distSqr(origin);
                     BlockPos worldPos = (distDirect < distOffset) ? directPos : offsetPos;
 
                     nbtMap.put(worldPos, new NbtContext(nbt, placement));
@@ -222,14 +224,14 @@ public class FillMaterialCalculator {
                 inLayer = globalFilter.test(absoluteY, nbtY);
             }
 
-            Map<Integer, ItemStack> required = RealContainerCache.parseNbtInventory(ctx.nbt, client.world.getRegistryManager());
+            Map<Integer, ItemStack> required = RealContainerCache.parseNbtInventory(ctx.nbt, client.level.registryAccess());
             MaterialReplacer.replaceInMap(required);
 
             BlockPos mainPos = pos;
-            BlockState realState = client.world.getBlockState(pos);
+            BlockState realState = client.level.getBlockState(pos);
 
             if (realState.hasBlockEntity()) {
-                BlockPos[] halves = LitematicaContainerReader.getDoubleContainerHalves(client.world, pos, realState);
+                BlockPos[] halves = LitematicaContainerReader.getDoubleContainerHalves(client.level, pos, realState);
                 if (halves != null) {
                     mainPos = halves[0];
                     globalVisited.add(halves[0]);
@@ -239,7 +241,7 @@ public class FillMaterialCalculator {
                     BlockPos otherPos = isPrimary ? halves[1] : halves[0];
 
                     if (nbtMap.containsKey(otherPos)) {
-                        Map<Integer, ItemStack> otherReq = RealContainerCache.parseNbtInventory(nbtMap.get(otherPos).nbt, client.world.getRegistryManager());
+                        Map<Integer, ItemStack> otherReq = RealContainerCache.parseNbtInventory(nbtMap.get(otherPos).nbt, client.level.registryAccess());
                         MaterialReplacer.replaceInMap(otherReq);
 
                         if (isPrimary) {
@@ -335,7 +337,7 @@ public class FillMaterialCalculator {
         }
 
         if (!silent && client.player != null) {
-            client.player.sendMessage(net.minecraft.text.Text.translatable("litematica_container_filler.message.parsed_containers", foundContainersAll), false);
+            client.gui.setOverlayMessage(Component.translatable("litematica_container_filler.message.parsed_containers", foundContainersAll), false);
         }
     }
 
@@ -486,8 +488,8 @@ public class FillMaterialCalculator {
         return null;
     }
 
-    private static int getIntFromNbt(NbtElement elem) {
-        if (elem instanceof net.minecraft.nbt.AbstractNbtNumber num) return num.intValue();
+    private static int getIntFromNbt(Tag elem) {
+        if (elem instanceof net.minecraft.nbt.NumericTag num) return num.intValue();
         return 0;
     }
 
@@ -506,26 +508,26 @@ public class FillMaterialCalculator {
         return null;
     }
 
-    private static void extractNbtsFromMemory(Object obj, List<NbtCompound> results, Set<Object> visited, int depth) {
+    private static void extractNbtsFromMemory(Object obj, List<CompoundTag> results, Set<Object> visited, int depth) {
         if (obj == null || depth > 25 || !visited.add(obj)) return;
 
-        if (obj instanceof NbtCompound c) {
+        if (obj instanceof CompoundTag c) {
             if (c.contains("Items")) results.add(c);
-            for (String key : c.getKeys()) {
-                NbtElement el = c.get(key);
-                if (el instanceof NbtCompound child) extractNbtsFromMemory(child, results, visited, depth + 1);
-                else if (el instanceof NbtList list) {
+            for (String key : c.keySet()) {
+                Tag el = c.get(key);
+                if (el instanceof CompoundTag child) extractNbtsFromMemory(child, results, visited, depth + 1);
+                else if (el instanceof ListTag list) {
                     for (int i = 0; i < list.size(); i++) extractNbtsFromMemory(list.get(i), results, visited, depth + 1);
                 }
             }
             return;
         }
 
-        if (obj instanceof net.minecraft.block.entity.BlockEntity be) {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world != null) {
+        if (obj instanceof net.minecraft.world.level.block.entity.BlockEntity be) {
+            Minecraft client = Minecraft.getInstance();
+            if (client.level != null) {
                 try {
-                    NbtCompound c = be.createNbt(client.world.getRegistryManager());
+                    CompoundTag c = be.saveWithoutMetadata(client.level.registryAccess());
                     if (c != null && c.contains("Items")) results.add(c);
                 } catch (Exception ignored) {}
             }
@@ -563,14 +565,89 @@ public class FillMaterialCalculator {
         }
     }
 
-    public static List<MaterialListEntry> getCustomMaterialList() {
+    private static boolean isItemIgnored(Object materialListObj, Item item) {
+        if (materialListObj != null) {
+            try {
+                for (java.lang.reflect.Method m : materialListObj.getClass().getMethods()) {
+                    String name = m.getName().toLowerCase();
+                    if (name.contains("ignore") && m.getReturnType() == boolean.class && m.getParameterCount() == 1) {
+                        Class<?> pType = m.getParameterTypes()[0];
+                        if (pType == Item.class) {
+                            return (Boolean) m.invoke(materialListObj, item);
+                        } else if (pType == net.minecraft.resources.Identifier.class) {
+                            return (Boolean) m.invoke(materialListObj, BuiltInRegistries.ITEM.getKey(item));
+                        } else if (pType.getSimpleName().equals("ItemType")) {
+                            try {
+                                Object itemType = pType.getConstructor(Item.class).newInstance(item);
+                                return (Boolean) m.invoke(materialListObj, itemType);
+                            } catch (Exception e) {}
+                        }
+                    }
+                }
+
+                Class<?> currClass = materialListObj.getClass();
+                while (currClass != null && currClass != Object.class) {
+                    for (java.lang.reflect.Field f : currClass.getDeclaredFields()) {
+                        if (java.util.Collection.class.isAssignableFrom(f.getType())) {
+                            String fName = f.getName().toLowerCase();
+                            if (fName.contains("ignore")) {
+                                f.setAccessible(true);
+                                java.util.Collection<?> coll = (java.util.Collection<?>) f.get(materialListObj);
+                                if (coll != null && !coll.isEmpty()) {
+                                    if (coll.contains(item)) return true;
+                                    net.minecraft.resources.Identifier id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item);
+                                    if (coll.contains(id) || coll.contains(id.toString()) || coll.contains(id.getPath())) return true;
+
+                                    for (Object obj : coll) {
+                                        if (obj == null) continue;
+                                        if (obj == item) return true;
+                                        try {
+                                            for (java.lang.reflect.Method m : obj.getClass().getMethods()) {
+                                                if (m.getParameterCount() == 0 && m.getReturnType() == Item.class) {
+                                                    if (m.invoke(obj) == item) return true;
+                                                }
+                                            }
+                                        } catch (Exception ignored) {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    currClass = currClass.getSuperclass();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        try {
+            for (java.lang.reflect.Field f : fi.dy.masa.litematica.config.Configs.Generic.class.getFields()) {
+                String cleanName = f.getName().toUpperCase().replace("_", "");
+                if (cleanName.equals("MATERIALLISTIGNORETYPES")) {
+                    Object opt = f.get(null);
+                    if (opt != null) {
+                        @SuppressWarnings("unchecked")
+                        List<String> ignoredList = (List<String>) opt.getClass().getMethod("getStrings").invoke(opt);
+                        if (ignoredList != null && !ignoredList.isEmpty()) {
+                            net.minecraft.resources.Identifier id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item);
+                            if (ignoredList.contains(id.toString()) || ignoredList.contains(id.getPath())) {
+                                return true;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        } catch (Exception ignored) {}
+
+        return false;
+    }
+
+    public static List<MaterialListEntry> getCustomMaterialList(Object materialListObj) {
         boolean limitToLayer = true;
 
         try {
             for (java.lang.reflect.Field f : fi.dy.masa.litematica.config.Configs.Generic.class.getFields()) {
                 String cleanName = f.getName().toUpperCase().replace("_", "");
 
-                // 获取图层过滤设置
                 if (cleanName.equals("MATERIALLISTDISPLAYTYPE") || cleanName.equals("MATERIALLISTLIMITTOLAYER") || cleanName.equals("MATERIALLISTIGNORERENDERLAYER")) {
                     Object opt = f.get(null);
                     if (opt != null) {
@@ -594,10 +671,13 @@ public class FillMaterialCalculator {
             }
         } catch (Exception ignored) {}
 
-
         List<MaterialListEntry> list = new ArrayList<>();
 
         for (Map.Entry<ItemStackKey, ItemStats> entry : itemStatsCache.entrySet()) {
+            if (isItemIgnored(materialListObj, entry.getKey().item)) {
+                continue;
+            }
+
             ItemStats stats = entry.getValue();
 
             int total = limitToLayer ? stats.totalLayer : stats.totalAll;

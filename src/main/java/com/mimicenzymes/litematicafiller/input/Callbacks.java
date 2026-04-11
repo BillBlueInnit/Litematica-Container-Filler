@@ -11,12 +11,12 @@ import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.hotkeys.IHotkeyCallback;
 import fi.dy.masa.malilib.hotkeys.IKeybind;
 import fi.dy.masa.malilib.hotkeys.KeyAction;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,7 +26,7 @@ public class Callbacks implements IHotkeyCallback {
 
     @Override
     public boolean onKeyAction(KeyAction action, IKeybind key) {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         if (action != KeyAction.PRESS) return false;
 
         if (key == Hotkeys.OPEN_CONFIG_GUI.getKeybind()) {
@@ -47,34 +47,34 @@ public class Callbacks implements IHotkeyCallback {
         } else if (key == Hotkeys.TOGGLE_CONTINUOUS.getKeybind()) {
             boolean state = !Configs.CONTINUOUS_FILL.getBooleanValue();
             Configs.CONTINUOUS_FILL.setBooleanValue(state);
-            mc.player.sendMessage(Text.translatable(state ? "litematica_container_filler.message.continuous_on" : "litematica_container_filler.message.continuous_off"), true);
+            mc.gui.setOverlayMessage(Component.translatable(state ? "litematica_container_filler.message.continuous_on" : "litematica_container_filler.message.continuous_off"), true);
             return true;
         } else if (key == Hotkeys.TOGGLE_MODE.getKeybind()) {
             boolean state = !Configs.AREA_MODE.getBooleanValue();
             Configs.AREA_MODE.setBooleanValue(state);
-            mc.player.sendMessage(Text.translatable(state ? "litematica_container_filler.message.mode_area" : "litematica_container_filler.message.mode_single"), true);
+            mc.gui.setOverlayMessage(Component.translatable(state ? "litematica_container_filler.message.mode_area" : "litematica_container_filler.message.mode_single"), true);
             return true;
         }
 
         return false;
     }
 
-    private void executeFill(MinecraftClient mc) {
+    private void executeFill(Minecraft mc) {
         if (Configs.AREA_MODE.getBooleanValue()) {
             AreaScanner.executeScan(mc, false);
         } else {
-            if (mc.crosshairTarget != null && mc.crosshairTarget.getType() == HitResult.Type.BLOCK) {
-                BlockHitResult bhr = (BlockHitResult) mc.crosshairTarget;
+            if (mc.hitResult != null && mc.hitResult.getType() == HitResult.Type.BLOCK) {
+                BlockHitResult bhr = (BlockHitResult) mc.hitResult;
                 BlockPos pos = bhr.getBlockPos();
 
                 var schWorld = fi.dy.masa.litematica.world.SchematicWorldHandler.getSchematicWorld();
                 if (schWorld == null || !schWorld.getBlockState(pos).hasBlockEntity()) {
-                    mc.player.sendMessage(Text.translatable("litematica_container_filler.message.no_requirements"), true);
+                    mc.gui.setOverlayMessage(Component.translatable("litematica_container_filler.message.no_requirements"), true);
                     return;
                 }
 
-                Map<Integer, ItemStack> required = LitematicaContainerReader.getRequiredItems(pos, mc.world.getRegistryManager());
-                boolean isCrafter = schWorld.getBlockState(pos).getBlock() instanceof net.minecraft.block.CrafterBlock;
+                Map<Integer, ItemStack> required = LitematicaContainerReader.getRequiredItems(pos, mc.level.registryAccess());
+                boolean isCrafter = schWorld.getBlockState(pos).getBlock() instanceof net.minecraft.world.level.block.CrafterBlock;
 
                 boolean needsLocking = isCrafter && LitematicaContainerReader.doesCrafterNeedLocking(pos, mc);
 
@@ -86,7 +86,7 @@ public class Callbacks implements IHotkeyCallback {
                     AutoFillerStateMachine.getInstance().addTask(pos, taskReq);
                 }
             } else {
-                mc.player.sendMessage(Text.translatable("litematica_container_filler.message.target_invalid"), true);
+                mc.gui.setOverlayMessage(Component.translatable("litematica_container_filler.message.target_invalid"), true);
             }
         }
     }

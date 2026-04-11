@@ -1,12 +1,13 @@
 package com.mimicenzymes.litematicafiller.core;
 
 import com.mimicenzymes.litematicafiller.config.Configs;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,7 @@ public class MaterialReplacer {
         boolean matches(ItemStack stack) {
             if (stack.getItem() != this.item) return false;
 
-            Text customName = stack.get(DataComponentTypes.CUSTOM_NAME);
+            Component customName = stack.get(DataComponents.CUSTOM_NAME);
 
             if (this.name == null) {
                 return customName == null;
@@ -64,7 +65,7 @@ public class MaterialReplacer {
                 ItemRule source = parseRule(parts[0].trim());
                 ItemRule target = parseRule(parts[1].trim());
 
-                if (source.item != net.minecraft.item.Items.AIR && target.item != net.minecraft.item.Items.AIR) {
+                if (source.item != net.minecraft.world.item.Items.AIR && target.item != net.minecraft.world.item.Items.AIR) {
                     REPLACEMENTS.add(new Replacement(source, target));
                 }
             }
@@ -88,9 +89,9 @@ public class MaterialReplacer {
         }
 
         Identifier id = Identifier.tryParse(idStr);
-        Item item = net.minecraft.item.Items.AIR;
-        if (id != null && Registries.ITEM.containsId(id)) {
-            item = Registries.ITEM.get(id);
+        Item item = Items.AIR;
+        if (id != null && BuiltInRegistries.ITEM.containsKey(id)) {
+            item = BuiltInRegistries.ITEM.getValue(id);
         }
 
         return new ItemRule(item, nameStr);
@@ -106,7 +107,7 @@ public class MaterialReplacer {
                 ItemStack newStack = new ItemStack(rep.target.item, original.getCount());
 
                 if (rep.target.name != null) {
-                    newStack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(rep.target.name));
+                    newStack.set(DataComponents.CUSTOM_NAME, Component.literal(rep.target.name));
                 }
 
                 return newStack;
@@ -127,15 +128,15 @@ public class MaterialReplacer {
         }
     }
 
-    public static void replaceInNbtList(net.minecraft.nbt.NbtList itemsList, net.minecraft.registry.RegistryWrapper.WrapperLookup registries) {
+    public static void replaceInNbtList(net.minecraft.nbt.ListTag itemsList, net.minecraft.core.HolderLookup.Provider registries) {
         for (int i = 0; i < itemsList.size(); i++) {
-            if (itemsList.get(i) instanceof net.minecraft.nbt.NbtCompound itemTag) {
-                ItemStack original = ItemStack.OPTIONAL_CODEC.parse(registries.getOps(net.minecraft.nbt.NbtOps.INSTANCE), itemTag).resultOrPartial().orElse(ItemStack.EMPTY);
+            if (itemsList.get(i) instanceof net.minecraft.nbt.CompoundTag itemTag) {
+                ItemStack original = ItemStack.OPTIONAL_CODEC.parse(registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), itemTag).resultOrPartial().orElse(ItemStack.EMPTY);
                 if (!original.isEmpty()) {
                     ItemStack replaced = replaceSingleStack(original);
                     if (replaced != original) {
-                        net.minecraft.nbt.NbtElement newTag = ItemStack.OPTIONAL_CODEC.encodeStart(registries.getOps(net.minecraft.nbt.NbtOps.INSTANCE), replaced).resultOrPartial().orElse(null);
-                        if (newTag instanceof net.minecraft.nbt.NbtCompound newCompound) {
+                        net.minecraft.nbt.Tag newTag = ItemStack.OPTIONAL_CODEC.encodeStart(registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), replaced).resultOrPartial().orElse(null);
+                        if (newTag instanceof net.minecraft.nbt.CompoundTag newCompound) {
                             if (itemTag.contains("Slot")) {
                                 newCompound.put("Slot", itemTag.get("Slot"));
                             }
