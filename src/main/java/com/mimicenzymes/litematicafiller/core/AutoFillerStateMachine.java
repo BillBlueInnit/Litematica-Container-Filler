@@ -36,14 +36,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class AutoFillerStateMachine {
 
     public enum Phase {
-        IDLE,
-        AWAITING_DATA,
-        INSPECTING,
-        STASHING,
-        CREATIVE_PRINTING,
-        GATHERING,
-        FILLING,
-        RETURNING
+        IDLE, AWAITING_DATA, INSPECTING, STASHING, GATHERING, FILLING, RETURNING
     }
 
     public static class FillTask {
@@ -178,7 +171,7 @@ public class AutoFillerStateMachine {
         if (client.isLocalServer() && client.getSingleplayerServer() != null && client.level != null && client.player != null) {
             ServerPlayer serverPlayer = client.getSingleplayerServer().getPlayerList().getPlayer(client.player.getUUID());
             if (serverPlayer != null) {
-                ServerLevel serverWorld = (ServerLevel) serverPlayer.level();
+                ServerLevel serverWorld =  (ServerLevel) serverPlayer.level();
                 if (serverWorld != null) {
                     net.minecraft.world.level.block.state.BlockState clientState = client.level.getBlockState(finalPos);
                     final BlockPos[] halves = LitematicaContainerReader.getDoubleContainerHalves(client.level, finalPos, clientState);
@@ -1299,11 +1292,12 @@ public class AutoFillerStateMachine {
             }
         }
 
+        // ==========================================
+        // 【创造模式精准按需印钞】
+        // 在有空格子的情况下，不挪用已有材料，优先直接印制所需数量到鼠标上并装填！
+        // ==========================================
         boolean printedAny = false;
         if (isCreativeFill && (!swappedAnyInThisPass && !extractedAnyInThisPass)) {
-            Map<StrictItemStackKey, Integer> globalDeficit = new HashMap<>();
-            Map<StrictItemStackKey, ItemStack> repStacks = new HashMap<>();
-
             for (int containerSlot = 0; containerSlot < containerSize; containerSlot++) {
                 if (handler instanceof CrafterMenu ch && ch.isSlotDisabled(containerSlot)) continue;
 
@@ -1321,38 +1315,30 @@ public class AutoFillerStateMachine {
                 int actualMissing = Math.min(reqStack.getCount() - curCount, allowed);
 
                 if (actualMissing > 0 && (curStack.isEmpty() || ItemMatcher.isSameItem(curStack, reqStack))) {
-                    StrictItemStackKey key = new StrictItemStackKey(reqStack);
-                    globalDeficit.put(key, globalDeficit.getOrDefault(key, 0) + actualMissing);
-                    repStacks.putIfAbsent(key, reqStack);
-                }
-            }
 
-            for (Map.Entry<StrictItemStackKey, Integer> entry : globalDeficit.entrySet()) {
-                ItemStack reqStack = repStacks.get(entry.getKey());
-                int totalNeeded = entry.getValue();
-                int inInv = countItemInPlayerInv(client, reqStack);
-
-                int deficit = totalNeeded - inInv;
-                while (deficit > 0) {
                     int emptySlot = findEmptyPlayerSlot(client);
-                    if (emptySlot == -1) break;
+                    if (emptySlot != -1) {
+                        ItemStack createStack = reqStack.copy();
+                        createStack.setCount(actualMissing);
 
-                    ItemStack createStack = reqStack.copy();
-                    createStack.setCount(createStack.getMaxStackSize());
-                    int syncSlot = emptySlot < 9 ? emptySlot + 36 : emptySlot;
+                        int syncSlot = emptySlot < 9 ? emptySlot + 36 : emptySlot;
+                        int uiPlayerSlot = currentMapper.getUiSlotForPlayer(emptySlot);
 
-                    client.gameMode.handleCreativeModeItemAdd(createStack, syncSlot);
-                    client.player.getInventory().setItem(emptySlot, createStack);
+                        if (uiPlayerSlot >= 0 && uiPlayerSlot < handler.slots.size()) {
+                            client.gameMode.handleCreativeModeItemAdd(createStack, syncSlot);
+                            client.gameMode.handleContainerInput(syncId, uiPlayerSlot, 0, ContainerInput.PICKUP, client.player);
+                            client.gameMode.handleContainerInput(syncId, uiSlot, 0, ContainerInput.PICKUP, client.player);
 
-                    printedAny = true;
-                    deficit -= createStack.getMaxStackSize();
+                            currentTask.fillLedger.put(containerSlot, allowed - actualMissing);
+                            printedAny = true;
+                            movedAny = true;
 
-                    if (delay > 0) break;
+                            if (delay > 0) break;
+                        }
+                    }
                 }
-                if (delay > 0 && printedAny) break;
             }
-
-            if (printedAny) {
+            if (printedAny && delay > 0) {
                 actionWaitTicks = Math.max(1, delay);
                 consecutiveFailures = 0;
                 watchdogTimer = 0;
@@ -1675,7 +1661,7 @@ public class AutoFillerStateMachine {
             if (screen == null) {
                 if (client.player.containerMenu instanceof CrafterMenu) {
                     try {
-                        Class<?> cls = Class.forName("net.minecraft.client.gui.screen.ingame.CrafterScreen");
+                        Class<?> cls = Class.forName("net.minecraft.client.gui.screens.inventory.CrafterScreen");
                         screen = (AbstractContainerScreen<?>) cls.getConstructor(CrafterMenu.class, net.minecraft.world.entity.player.Inventory.class, net.minecraft.network.chat.Component.class)
                                 .newInstance(client.player.containerMenu, client.player.getInventory(), net.minecraft.network.chat.Component.literal("Crafter"));
 

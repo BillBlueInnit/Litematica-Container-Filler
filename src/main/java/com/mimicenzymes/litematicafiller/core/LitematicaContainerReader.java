@@ -32,6 +32,10 @@ public class LitematicaContainerReader {
                 return new BlockPos[]{rightPos, leftPos};
             }
         } else if (state.is(Blocks.BARREL)) {
+            if (!com.mimicenzymes.litematicafiller.config.Configs.ENABLE_CARPET_LARGE_BARRELS.getBooleanValue()) {
+                return null;
+            }
+
             Direction facing = state.getValue(BarrelBlock.FACING);
             Direction bottomDir = facing.getOpposite();
             BlockPos pos2 = pos.relative(bottomDir);
@@ -62,10 +66,14 @@ public class LitematicaContainerReader {
 
             items.putAll(rightHalf);
             leftHalf.forEach((slot, stack) -> items.put(slot + 27, stack));
-            return items;
+        } else {
+            items.putAll(getSingleContainerItems(schematicWorld, worldPos, registries));
         }
 
-        return getSingleContainerItems(schematicWorld, worldPos, registries);
+        // 全局材料洗牌：确保读取出来的物品已经被你的规则替换过
+        MaterialReplacer.replaceInMap(items);
+
+        return items;
     }
 
     private static Map<Integer, ItemStack> getSingleContainerItems(net.minecraft.world.level.Level schematicWorld, BlockPos pos, HolderLookup.Provider registries) {

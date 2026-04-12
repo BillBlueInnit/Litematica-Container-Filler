@@ -94,7 +94,7 @@ public class HighlightScanner {
         Map<BlockPos, HighlightState> nextMap = new HashMap<>();
 
         for (BlockPos pos : SCHEMATIC_CONTAINERS) {
-            if (pos.distSqr(currentCenter) > radiusSq) continue;
+            if (currentRadius > 0 && pos.distSqr(currentCenter) > radiusSq) continue;
 
             if (syncLayer && !fi.dy.masa.litematica.data.DataManager.getRenderLayerRange().isPositionWithinRange(pos)) continue;
 
@@ -111,18 +111,24 @@ public class HighlightScanner {
 
             if (!hasJob) continue;
 
-            Map<Integer, ItemStack> cached = RealContainerCache.getCachedItems(checkPos);
-            HighlightState type;
+            if (client.level.hasChunkAt(checkPos)) {
+                Map<Integer, ItemStack> cached = RealContainerCache.getCachedItems(checkPos);
+                HighlightState type;
 
-            if (cached == null) {
-                type = HighlightState.UNKNOWN;
-                RealContainerCache.requestContainerData(checkPos);
+                if (cached == null) {
+                    type = HighlightState.UNKNOWN;
+                    RealContainerCache.requestContainerData(checkPos);
+                } else {
+                    type = evaluateState(cached, required, isCrafter, checkPos, client);
+                }
+
+                if (!(hideCompleted && type == HighlightState.SATISFIED)) {
+                    nextMap.put(pos.immutable(), type);
+                }
             } else {
-                type = evaluateState(cached, required, isCrafter, checkPos, client);
-            }
-
-            if (!(hideCompleted && type == HighlightState.SATISFIED)) {
-                nextMap.put(pos.immutable(), type);
+                if (!hideCompleted) {
+                    nextMap.put(pos.immutable(), HighlightState.UNKNOWN);
+                }
             }
         }
 
