@@ -5,14 +5,13 @@ import fi.dy.masa.malilib.gui.GuiConfigsBase;
 import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
-import fi.dy.masa.malilib.hotkeys.IHotkey;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import java.util.ArrayList;
 import java.util.List;
 
 public class GuiConfigs extends GuiConfigsBase {
-    private static ConfigGuiTab tab = ConfigGuiTab.FEATURE;
+    private static Tab tab = Tab.FEATURE;
 
     public GuiConfigs(Screen parent) {
         super(10, 50, Reference.MOD_ID, parent, "litematica_container_filler.gui.title.configs");
@@ -28,7 +27,7 @@ public class GuiConfigs extends GuiConfigsBase {
         this.clearOptions();
         int x = 10;
         int y = 26;
-        for (ConfigGuiTab tab : ConfigGuiTab.values()) {
+        for (Tab tab : Tab.values()) {
             String tabName = fi.dy.masa.malilib.util.StringUtils.translate("litematica_container_filler.gui.button." + tab.name().toLowerCase());
             ButtonGeneric botton = new ButtonGeneric(x, y, -1, 20, tabName);
             this.addButton(botton, new ButtonListener(tab, this));
@@ -39,7 +38,7 @@ public class GuiConfigs extends GuiConfigsBase {
     @Override
     public List<ConfigOptionWrapper> getConfigs() {
         List<ConfigOptionWrapper> list = new ArrayList<>();
-        if (this.tab == ConfigGuiTab.FEATURE) {
+        if (tab == Tab.FEATURE) {
             Configs.OPTIONS.forEach(c -> list.add(new ConfigOptionWrapper(c)));
         } else {
             Hotkeys.HOTKEY_LIST.forEach(h -> list.add(new ConfigOptionWrapper(h)));
@@ -47,9 +46,9 @@ public class GuiConfigs extends GuiConfigsBase {
         return list;
     }
 
-    public enum ConfigGuiTab { FEATURE, HOTKEYS }
+    public enum Tab { FEATURE, HOTKEYS }
 
-    private record ButtonListener(ConfigGuiTab tab, GuiConfigs parent) implements IButtonActionListener {
+    private record ButtonListener(Tab tab, GuiConfigs parent) implements IButtonActionListener {
         @Override
         public void actionPerformedWithButton(ButtonBase button, int mouseButton) {
             GuiConfigs.tab = this.tab;
