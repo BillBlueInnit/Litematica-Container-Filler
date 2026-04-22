@@ -6,6 +6,11 @@ plugins {
 version = project.mod_version
 group = project.maven_group
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
 repositories {
     flatDir {
         dirs 'libs'
@@ -28,4 +33,8 @@ dependencies {
     modLocalRuntime name: 'modmenu-11.0.3'
     modCompileOnly name: 'quickshulker-1.4.5-1.21'
     modLocalRuntime name: 'quickshulker-1.4.5-1.21'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
 }
