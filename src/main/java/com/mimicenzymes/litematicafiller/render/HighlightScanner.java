@@ -1,16 +1,30 @@
 package com.mimicenzymes.litematicafiller.render;
 
+import net.minecraft.network.chat.Component;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.nbt.NumericTag;
+
+
 import com.mimicenzymes.litematicafiller.config.Configs;
 import com.mimicenzymes.litematicafiller.core.ItemMatcher;
 import com.mimicenzymes.litematicafiller.core.LitematicaContainerReader;
 import com.mimicenzymes.litematicafiller.core.RealContainerCache;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.client.Minecraft;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.core.BlockPos;
+
+
+
+
+
+
+
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -107,7 +121,12 @@ public class HighlightScanner {
 
             Map<Integer, ItemStack> required = getCachedSchematicReq(checkPos, client);
             boolean isCrafter = state.getBlock() instanceof net.minecraft.world.level.block.CrafterBlock;
-            boolean hasJob = (required != null && !required.isEmpty()) || isCrafter;
+
+            boolean hasJob = (required != null && !required.isEmpty());
+            if (!hasJob && isCrafter) {
+                Set<Integer> schematicLocks = LitematicaContainerReader.getDisabledSlots(checkPos);
+                hasJob = !schematicLocks.isEmpty();
+            }
 
             if (!hasJob) continue;
 
@@ -178,6 +197,8 @@ public class HighlightScanner {
             Collection<?> all = (Collection<?>) manager.getClass().getMethod("getAllSchematicsPlacements").invoke(manager);
             if (all != null) {
                 Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+                var schematicWorld = fi.dy.masa.litematica.world.SchematicWorldHandler.getSchematicWorld();
+
                 for (Object p : all) {
                     boolean enabled = true;
                     try { enabled = (boolean) p.getClass().getMethod("isEnabled").invoke(p); } catch (Exception e) {}
@@ -208,9 +229,22 @@ public class HighlightScanner {
 
                             BlockPos directPos = new BlockPos(nx, ny, nz);
                             BlockPos offsetPos = origin.offset(nx, ny, nz);
-                            double distDirect = directPos.distSqr(origin);
-                            double distOffset = offsetPos.distSqr(origin);
-                            BlockPos worldPos = (distDirect < distOffset) ? directPos : offsetPos;
+
+                            BlockPos worldPos = null;
+
+                            if (schematicWorld != null) {
+                                if (schematicWorld.getBlockState(offsetPos).hasBlockEntity()) {
+                                    worldPos = offsetPos;
+                                } else if (schematicWorld.getBlockState(directPos).hasBlockEntity()) {
+                                    worldPos = directPos;
+                                }
+                            }
+
+                            if (worldPos == null) {
+                                double distDirect = directPos.distSqr(origin);
+                                double distOffset = offsetPos.distSqr(origin);
+                                worldPos = (distDirect < distOffset) ? directPos : offsetPos;
+                            }
 
                             newSet.add(worldPos);
                         }
@@ -222,7 +256,7 @@ public class HighlightScanner {
     }
 
     private static void extractNbts(Object obj, List<CompoundTag> results, Set<Object> visited, int depth) {
-        if (obj == null || depth > 25 || !visited.add(obj)) return;
+        if (obj == null || depth > 100 || !visited.add(obj)) return;
 
         if (obj instanceof CompoundTag c) {
             if (c.contains("x") && c.contains("y") && c.contains("z") && (c.contains("Items") || c.contains("id"))) {

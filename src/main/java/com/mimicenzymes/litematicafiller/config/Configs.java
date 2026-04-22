@@ -1,15 +1,36 @@
 package com.mimicenzymes.litematicafiller.config;
 
 import com.google.common.collect.ImmutableList;
+import com.mimicenzymes.litematicafiller.Reference;
 import com.mimicenzymes.litematicafiller.dependency.DependencyChecker;
+import com.mimicenzymes.litematicafiller.input.InputHandler;
+import fi.dy.masa.malilib.config.ConfigManager;
+import fi.dy.masa.malilib.config.ConfigUtils;
 import fi.dy.masa.malilib.config.IConfigBase;
+import fi.dy.masa.malilib.config.IConfigHandler;
 import fi.dy.masa.malilib.config.options.ConfigBoolean;
 import fi.dy.masa.malilib.config.options.ConfigColor;
 import fi.dy.masa.malilib.config.options.ConfigInteger;
 import fi.dy.masa.malilib.config.options.ConfigStringList;
+import fi.dy.masa.malilib.event.InputEventHandler;
+import net.fabricmc.loader.api.FabricLoader;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 
-public class Configs {
+public class Configs implements IConfigHandler {
+
+    private static final Configs INSTANCE = new Configs();
+    private static final String CONFIG_FILE_NAME = "litematica_container_filler.json";
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     //核心运行设置
     public static final ConfigBoolean ENABLE_MOD = new ConfigBoolean("litematica_container_filler.config.name.enableMod", true, "litematica_container_filler.config.comment.enableMod");
@@ -17,8 +38,8 @@ public class Configs {
     public static final ConfigBoolean AREA_MODE = new ConfigBoolean("litematica_container_filler.config.name.areaMode", false, "litematica_container_filler.config.comment.areaMode");
     public static final ConfigInteger FILL_RADIUS = new ConfigInteger("litematica_container_filler.config.name.fillRadius", 5, 0, 1024, "litematica_container_filler.config.comment.fillRadius");
     public static final ConfigInteger FILL_DELAY = new ConfigInteger("litematica_container_filler.config.name.fillDelay", 0, 0, 100, "litematica_container_filler.config.comment.fillDelay");
-    public static final ConfigBoolean ENABLE_CARPET_LARGE_BARRELS = new ConfigBoolean("litematica_container_filler.config.name.enableCarpetLargeBarrels", false, "litematica_container_filler.config.comment.enableCarpetLargeBarrels");
     public static final ConfigStringList MATERIAL_REPLACEMENTS = new ConfigStringList("litematica_container_filler.config.name.materialReplacements", ImmutableList.of(), "litematica_container_filler.config.comment.materialReplacements");
+    public static final ConfigBoolean ENABLE_CARPET_LARGE_BARRELS = new ConfigBoolean("litematica_container_filler.config.name.enableCarpetLargeBarrels", false, "litematica_container_filler.config.comment.enableCarpetLargeBarRELS");
 
     //数据同步设置
     public static final ConfigBoolean ENABLE_DATA_SYNC = new ConfigBoolean("litematica_container_filler.config.name.enableDataSync", true, "litematica_container_filler.config.comment.enableDataSync");
@@ -51,7 +72,9 @@ public class Configs {
 
     static {
         ImmutableList.Builder<IConfigBase> builder = ImmutableList.builder();
+
         // 核心
+        builder.add(ENABLE_MOD, CONTINUOUS_FILL, AREA_MODE, FILL_RADIUS, FILL_DELAY, MATERIAL_REPLACEMENTS);
         builder.add(ENABLE_MOD, CONTINUOUS_FILL, AREA_MODE, FILL_RADIUS, FILL_DELAY, ENABLE_CARPET_LARGE_BARRELS, MATERIAL_REPLACEMENTS);
 
         // 数据
@@ -72,5 +95,52 @@ public class Configs {
                 HIGHLIGHT_COLOR_WRONG, HIGHLIGHT_COLOR_SATISFIED, HIGHLIGHT_COLOR_UNKNOWN);
 
         OPTIONS = builder.build();
+    }
+
+    @Override
+    public void load() {
+        File file = new File(FabricLoader.getInstance().getConfigDir().toFile(), CONFIG_FILE_NAME);
+        if (file.exists() && file.canRead()) {
+            try (FileReader reader = new FileReader(file)) {
+                JsonElement element = JsonParser.parseReader(reader);
+                if (element != null && element.isJsonObject()) {
+                    JsonObject root = element.getAsJsonObject();
+                    ConfigUtils.readConfigBase(root, "Features", Configs.OPTIONS);
+                    ConfigUtils.readConfigBase(root, "Hotkeys", Hotkeys.HOTKEY_LIST);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to parse config file: " + file.getAbsolutePath());
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void save() {
+        File dir = FabricLoader.getInstance().getConfigDir().toFile();
+        if ((dir.exists() && dir.isDirectory()) || dir.mkdirs()) {
+            JsonObject root = new JsonObject();
+            ConfigUtils.writeConfigBase(root, "Features", Configs.OPTIONS);
+            ConfigUtils.writeConfigBase(root, "Hotkeys", Hotkeys.HOTKEY_LIST);
+
+            File file = new File(dir, CONFIG_FILE_NAME);
+            try (FileWriter writer = new FileWriter(file)) {
+                GSON.toJson(root, writer);
+            } catch (IOException e) {
+                System.err.println("Failed to save config file: " + file.getAbsolutePath());
+                e.printStackTrace();
+            }
+        }
+
+        InputHandler.getInstance().addKeysToMap(InputEventHandler.getKeybindManager());
+    }
+    public static void init() {
+        Configs.INSTANCE.load();
+        ConfigManager.getInstance().registerConfigHandler(Reference.MOD_ID, Configs.INSTANCE);
+        InputEventHandler.getKeybindManager().registerKeybindProvider(InputHandler.getInstance());
+        InputEventHandler.getInputManager().registerKeyboardInputHandler(InputHandler.getInstance());
+        fi.dy.masa.malilib.registry.Registry.CONFIG_SCREEN.registerConfigScreenFactory(
+                new fi.dy.masa.malilib.util.data.ModInfo(Reference.MOD_ID, Reference.MOD_SHORT_NAME, GuiConfigs::new)
+        );
     }
 }
