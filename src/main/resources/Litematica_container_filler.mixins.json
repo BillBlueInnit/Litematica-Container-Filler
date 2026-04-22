@@ -9,10 +9,12 @@
     "ClientPlayNetworkHandlerMixin",
     "GuiMainMenuMixin",
     "GuiMaterialListMixin",
+    "MaterialListBaseMixin",
     "BlockEntityMixin",
     "LootableContainerBlockEntityMixin",
     "CrafterBlockEntityMixin",
-    "SchematicPlacementMixin"
+    "SchematicPlacementMixin",
+    "MaterialListPlacementAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

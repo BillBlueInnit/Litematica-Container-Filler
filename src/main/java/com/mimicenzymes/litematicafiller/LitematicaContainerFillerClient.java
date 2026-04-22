@@ -21,7 +21,6 @@ import java.util.Map;
 public class LitematicaContainerFillerClient implements ClientModInitializer {
     private static boolean isGuiAutoRegistered = false;
     private static int printerTickTimer = 0;
-    //防鬼畜
     private static final Map<BlockPos, Long> CROSSHAIR_COOLDOWNS = new HashMap<>();
 
     @Override
