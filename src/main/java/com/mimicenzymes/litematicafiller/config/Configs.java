@@ -22,7 +22,6 @@ import java.io.File;
 import java.util.List;
 
 public class Configs implements IConfigHandler {
-
     private static final Configs INSTANCE = new Configs();
 
     private static final String CONFIG_FILE_NAME = "litematica_container_filler.json";
@@ -31,9 +30,9 @@ public class Configs implements IConfigHandler {
     public static final ConfigBoolean ENABLE_MOD                    = new ConfigBoolean("litematica_container_filler.config.name.enableMod", true, "litematica_container_filler.config.comment.enableMod");
     public static final ConfigBoolean CONTINUOUS_FILL               = new ConfigBoolean("litematica_container_filler.config.name.continuousFill", false, "litematica_container_filler.config.comment.continuousFill");
     public static final ConfigBoolean AREA_MODE                     = new ConfigBoolean("litematica_container_filler.config.name.areaMode", false, "litematica_container_filler.config.comment.areaMode");
-    public static final ConfigBoolean ENABLE_CARPET_LARGE_BARRELS   = new ConfigBoolean("litematica_container_filler.config.name.enableCarpetLargeBarrels", false, "litematica_container_filler.config.comment.enableCarpetLargeBarrels");
     public static final ConfigInteger FILL_RADIUS                   = new ConfigInteger("litematica_container_filler.config.name.fillRadius", 5, 0, 1024, "litematica_container_filler.config.comment.fillRadius");
     public static final ConfigInteger FILL_DELAY                    = new ConfigInteger("litematica_container_filler.config.name.fillDelay", 0, 0, 100, "litematica_container_filler.config.comment.fillDelay");
+    public static final ConfigBoolean ENABLE_CARPET_LARGE_BARRELS   = new ConfigBoolean("litematica_container_filler.config.name.enableCarpetLargeBarrels", false, "litematica_container_filler.config.comment.enableCarpetLargeBarrels");
     public static final ConfigStringList MATERIAL_REPLACEMENTS      = new ConfigStringList("litematica_container_filler.config.name.materialReplacements", ImmutableList.of(), "litematica_container_filler.config.comment.materialReplacements");
 
     //数据同步设置
@@ -88,7 +87,6 @@ public class Configs implements IConfigHandler {
         builder.add(
                 ENABLE_CREATIVE_FILL
         );
-
         if (DependencyChecker.HAS_QUICK_SHULKER) {
             builder.add(ENABLE_QS_EXTRACTION);
         }
