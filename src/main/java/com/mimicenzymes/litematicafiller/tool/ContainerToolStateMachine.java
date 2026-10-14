@@ -1061,7 +1061,7 @@ public class ContainerToolStateMachine {
                 ItemContainerContents component = shulker.get(DataComponents.CONTAINER);
                 if (component == null) continue;
 
-                for (ItemStack inner : component.allItemsCopyStream().toList()) {
+                for (ItemStack inner : component.itemCopies().toList()) {
                     if (ItemMatcher.isSameItem(inner, req)) {
                         slots.add(i);
                         amountToFind -= inner.getCount();
@@ -1372,7 +1372,7 @@ public class ContainerToolStateMachine {
             return !requireMatching;
         }
 
-        List<ItemStack> innerStacks = component.allItemsCopyStream().toList();
+        List<ItemStack> innerStacks = component.itemCopies().toList();
         if (innerStacks.isEmpty()) {
             return !requireMatching;
         }
@@ -1401,7 +1401,7 @@ public class ContainerToolStateMachine {
             return 27 * stack.getMaxStackSize();
         }
 
-        List<ItemStack> innerStacks = component.allItemsCopyStream().toList();
+        List<ItemStack> innerStacks = component.itemCopies().toList();
         int capacity = Math.max(0, 27 - innerStacks.size()) * stack.getMaxStackSize();
         for (ItemStack inner : innerStacks) {
             if (ItemMatcher.isSameItem(inner, stack)) {
@@ -1461,7 +1461,7 @@ public class ContainerToolStateMachine {
         ItemContainerContents component = shulker.get(DataComponents.CONTAINER);
         if (component == null) return true;
 
-        List<ItemStack> innerStacks = component.allItemsCopyStream().toList();
+        List<ItemStack> innerStacks = component.itemCopies().toList();
         if (request.innerSlot() < 0 || request.innerSlot() >= innerStacks.size()) return true;
 
         ItemStack inner = innerStacks.get(request.innerSlot());
@@ -1477,7 +1477,7 @@ public class ContainerToolStateMachine {
                 ItemContainerContents component = shulker.get(DataComponents.CONTAINER);
                 if (component == null) continue;
 
-                List<ItemStack> innerStacks = component.allItemsCopyStream().toList();
+                List<ItemStack> innerStacks = component.itemCopies().toList();
                 for (int innerSlot = 0; innerSlot < innerStacks.size(); innerSlot++) {
                     ItemStack inner = innerStacks.get(innerSlot);
                     if (ItemMatcher.isSameItem(inner, req)) {

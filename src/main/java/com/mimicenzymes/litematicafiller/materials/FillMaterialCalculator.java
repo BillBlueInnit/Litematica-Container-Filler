@@ -32,6 +32,8 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
+import fi.dy.masa.malilib.util.data.tag.CompoundData;
+import fi.dy.masa.malilib.util.data.tag.converter.DataConverterNbt;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.Identifier;
@@ -304,7 +306,7 @@ public class FillMaterialCalculator {
 
                 int totalTEs = 0;
                 for (String regionName : schematic.getAreaPositions().keySet()) {
-                    Map<BlockPos, CompoundTag> teMap = schematic.getBlockEntityMapForRegion(regionName);
+                    Map<BlockPos, CompoundData> teMap = schematic.getBlockEntityMapForRegion(regionName);
                     if (teMap != null) totalTEs += teMap.size();
                 }
 
@@ -608,11 +610,12 @@ public class FillMaterialCalculator {
             if (schematic == null) continue;
 
             for (String regionName : getSchematicRegions(schematic, source.regions)) {
-                Map<BlockPos, CompoundTag> teMap = schematic.getBlockEntityMapForRegion(regionName);
+                Map<BlockPos, CompoundData> teMap = schematic.getBlockEntityMapForRegion(regionName);
                 if (teMap == null || teMap.isEmpty()) continue;
 
-                for (CompoundTag nbt : teMap.values()) {
-                    if (nbt == null || !nbt.contains("Items")) continue;
+                for (CompoundData data : teMap.values()) {
+                    if (data == null || !data.containsLenient("Items")) continue;
+                    CompoundTag nbt = DataConverterNbt.toVanillaCompound(data);
 
                     ReplacementResult parsed = replaceInventoryMapWithOrigins(
                             RealContainerCache.parseNbtInventory(nbt, client.level.registryAccess()),
@@ -677,7 +680,7 @@ public class FillMaterialCalculator {
         if (schematic == null) return false;
 
         for (String regionName : getSchematicRegions(schematic, selectedRegions)) {
-            Map<BlockPos, CompoundTag> teMap = schematic.getBlockEntityMapForRegion(regionName);
+            Map<BlockPos, CompoundData> teMap = schematic.getBlockEntityMapForRegion(regionName);
             if (teMap != null && !teMap.isEmpty()) return true;
         }
 
