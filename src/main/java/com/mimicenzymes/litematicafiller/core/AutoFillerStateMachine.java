@@ -196,7 +196,7 @@ public class AutoFillerStateMachine {
     }
 
     private static Iterable<ItemStack> containerStacks(ItemContainerContents component) {
-        return () -> component.allItemsCopyStream().iterator();
+        return () -> component.itemCopies().iterator();
     }
 
     private static ItemStack getContainerStackAt(ItemContainerContents component, int targetIndex) {
@@ -694,7 +694,7 @@ public class AutoFillerStateMachine {
             if (c == null) return i;
 
             long occupied = 0;
-            for (ItemStack inner : c.allItemsCopyStream().toList()) {
+            for (ItemStack inner : c.itemCopies().toList()) {
                 if (inner.isEmpty()) continue;
                 occupied++;
                 if (ItemMatcher.isSameItem(inner, stackToStore) && inner.getCount() < inner.getMaxStackSize()) {
@@ -716,7 +716,7 @@ public class AutoFillerStateMachine {
         if (c == null) return true;
 
         long occupied = 0;
-        for (ItemStack inner : c.allItemsCopyStream().toList()) {
+        for (ItemStack inner : c.itemCopies().toList()) {
             if (inner.isEmpty()) continue;
             occupied++;
             if (ItemMatcher.isSameItem(inner, stackToStore) && inner.getCount() < inner.getMaxStackSize()) return true;
@@ -2576,7 +2576,7 @@ public class AutoFillerStateMachine {
             if (s.getItem() instanceof BlockItem bi && bi.getBlock() instanceof ShulkerBoxBlock) {
                 ItemContainerContents c = s.get(DataComponents.CONTAINER);
                 if (c != null) {
-                    for (ItemStack inner : c.allItemsCopyStream().toList()) {
+                    for (ItemStack inner : c.itemCopies().toList()) {
                         if (ItemMatcher.isSameItem(inner, target)) return true;
                     }
                 }
