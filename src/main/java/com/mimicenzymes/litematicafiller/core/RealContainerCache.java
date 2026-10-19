@@ -1,5 +1,6 @@
 package com.mimicenzymes.litematicafiller.core;
 
+import com.mojang.logging.LogUtils;
 import com.mimicenzymes.litematicafiller.config.Configs;
 import com.mimicenzymes.litematicafiller.filter.ContainerBlockFilter;
 import com.mimicenzymes.litematicafiller.materials.FillMaterialCalculator;
@@ -24,6 +25,7 @@ import net.minecraft.screen.slot.Slot;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -34,6 +36,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RealContainerCache {
+    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final boolean DEBUG_CONTAINER_DATA = true;
+    private static final long DEBUG_LOG_INTERVAL_MS = 2000L;
+    private static final Map<String, Long> DEBUG_LAST_LOG_TIME = new ConcurrentHashMap<>();
     private static final long CACHE_TTL_MS = 300000L;
     private static final int MAX_PENDING_NBT_REQUESTS = 2048;
     private static final Map<BlockPos, Map<Integer, ItemStack>> CACHE = new ConcurrentHashMap<>();
@@ -68,6 +74,28 @@ public class RealContainerCache {
     private static int transactionCounter = 10000;
 
     private static int cacheVersion = 0;
+
+    private static void debugLog(String key, String message, Object... args) {
+        if (!DEBUG_CONTAINER_DATA) return;
+
+        long now = System.currentTimeMillis();
+        if (key != null) {
+            Long last = DEBUG_LAST_LOG_TIME.get(key);
+            if (last != null && now - last < DEBUG_LOG_INTERVAL_MS) return;
+            DEBUG_LAST_LOG_TIME.put(key, now);
+        }
+
+        LOGGER.info("[LCF-Debug] " + message, args);
+    }
+
+    public static void debugHighlightUnknown(BlockPos pos, String reason, boolean areaLoaded) {
+        boolean hasCache = pos != null && CACHE.containsKey(pos);
+        boolean hasNbtCache = pos != null && NBT_QUERY_CACHE.containsKey(pos);
+        boolean hasAuthoritativeCache = pos != null && getAuthoritativeCachedItems(pos) != null;
+        debugLog("highlight-unknown:" + pos,
+                "Highlight UNKNOWN pos={} reason={} areaLoaded={} hasCache={} hasNbtCache={} hasAuthoritativeCache={}",
+                pos, reason, areaLoaded, hasCache, hasNbtCache, hasAuthoritativeCache);
+    }
 
     public static int getCacheVersion() {
         return cacheVersion;
@@ -639,7 +667,21 @@ public class RealContainerCache {
 
     public static void requestContainerData(BlockPos pos, long minIntervalMs, boolean preferOpQuery) {
         long now = System.currentTimeMillis();
-        if (!hasActiveConsumers() || pos == null || now - LAST_REQUEST_TIME.getOrDefault(pos, 0L) < minIntervalMs) return;
+        if (pos == null) {
+            debugLog("request-null", "Skip data request: pos is null");
+            return;
+        }
+        if (!hasActiveConsumers()) {
+            debugLog("request-no-consumer:" + pos, "Skip data request pos={}: no active consumers", pos);
+            return;
+        }
+        long lastRequest = LAST_REQUEST_TIME.getOrDefault(pos, 0L);
+        if (now - lastRequest < minIntervalMs) {
+            debugLog("request-throttle:" + pos,
+                    "Skip data request pos={}: throttled elapsedMs={} minIntervalMs={}",
+                    pos, now - lastRequest, minIntervalMs);
+            return;
+        }
 
         boolean isDouble = false;
         BlockPos[] halves = null;
@@ -652,6 +694,10 @@ public class RealContainerCache {
             }
             if (halves != null) isDouble = true;
         }
+
+        debugLog("request-start:" + pos,
+                "Request data pos={} minIntervalMs={} preferOpQuery={} canUseOpNbt={} enableDataSync={} isDouble={} halves={}",
+                pos, minIntervalMs, preferOpQuery, canUseOpNbtQuery(), Configs.ENABLE_DATA_SYNC.getBooleanValue(), isDouble, halves);
 
         if (preferOpQuery && requestOpNbtData(pos, halves, isDouble, now)) {
             return;
@@ -671,7 +717,12 @@ public class RealContainerCache {
         }
 
         if (requested) {
+            debugLog("request-sync:" + pos, "Requested sync data pos={} isDouble={} halves={}", pos, isDouble, halves);
             rememberRequestTime(pos, halves, now);
+        } else if (Configs.ENABLE_DATA_SYNC.getBooleanValue()) {
+            debugLog("request-sync-failed:" + pos, "No sync data request accepted pos={} isDouble={} halves={}", pos, isDouble, halves);
+        } else {
+            debugLog("request-sync-disabled:" + pos, "Data sync disabled pos={}", pos);
         }
 
         if (requestOpNbtData(pos, halves, isDouble, now)) {
@@ -689,13 +740,26 @@ public class RealContainerCache {
     }
 
     private static boolean requestOpNbtData(BlockPos pos, BlockPos[] halves, boolean isDouble, long now) {
-        if (!canUseOpNbtQuery()) return false;
+        if (!canUseOpNbtQuery()) {
+            debugLog("opnbt-disabled:" + pos, "OP NBT query unavailable pos={} isDouble={}", pos, isDouble);
+            return false;
+        }
 
         int requestCount = isDouble ? 2 : 1;
-        if (PENDING_NBT_REQUESTS.size() + requestCount > MAX_PENDING_NBT_REQUESTS) return false;
+        if (PENDING_NBT_REQUESTS.size() + requestCount > MAX_PENDING_NBT_REQUESTS) {
+            debugLog("opnbt-pending-full:" + pos,
+                    "OP NBT query skipped pos={}: pending={} requestCount={} max={}",
+                    pos, PENDING_NBT_REQUESTS.size(), requestCount, MAX_PENDING_NBT_REQUESTS);
+            return false;
+        }
 
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.getNetworkHandler() == null) return false;
+        if (client.player == null || client.getNetworkHandler() == null) {
+            debugLog("opnbt-no-client:" + pos,
+                    "OP NBT query skipped pos={}: playerPresent={} networkPresent={}",
+                    pos, client.player != null, client.getNetworkHandler() != null);
+            return false;
+        }
 
         rememberRequestTime(pos, isDouble ? halves : null, now);
         if (isDouble) {
@@ -708,6 +772,9 @@ public class RealContainerCache {
             PENDING_NBT_REQUESTS.put(id2, halves[1]);
             PENDING_NBT_REQUEST_TIME.put(id2, now);
             client.getNetworkHandler().sendPacket(new net.minecraft.network.packet.c2s.play.QueryBlockNbtC2SPacket(id2, halves[1]));
+            debugLog("opnbt-sent:" + pos,
+                    "Sent OP NBT query double pos={} id1={} half1={} id2={} half2={} pending={}",
+                    pos, id1, halves[0], id2, halves[1], PENDING_NBT_REQUESTS.size());
             return true;
         }
 
@@ -715,6 +782,9 @@ public class RealContainerCache {
         PENDING_NBT_REQUESTS.put(id, pos);
         PENDING_NBT_REQUEST_TIME.put(id, now);
         client.getNetworkHandler().sendPacket(new net.minecraft.network.packet.c2s.play.QueryBlockNbtC2SPacket(id, pos));
+        debugLog("opnbt-sent:" + pos,
+                "Sent OP NBT query pos={} id={} pending={}",
+                pos, id, PENDING_NBT_REQUESTS.size());
         return true;
     }
 
@@ -728,11 +798,34 @@ public class RealContainerCache {
     public static void handleNbtResponse(int transactionId, NbtCompound nbt) {
         BlockPos pos = PENDING_NBT_REQUESTS.remove(transactionId);
         Long requestedAt = PENDING_NBT_REQUEST_TIME.remove(transactionId);
-        if (!hasActiveConsumers()) return;
+        debugLog("opnbt-response:" + transactionId,
+                "Received OP NBT response id={} pos={} requestedAt={} hasNbt={} pending={}",
+                transactionId, pos, requestedAt, nbt != null, PENDING_NBT_REQUESTS.size());
+        if (!hasActiveConsumers()) {
+            debugLog("opnbt-response-no-consumer:" + transactionId,
+                    "Drop OP NBT response id={} pos={}: no active consumers",
+                    transactionId, pos);
+            return;
+        }
+        if (pos == null) {
+            debugLog("opnbt-response-no-pos:" + transactionId,
+                    "Drop OP NBT response id={}: no pending position, hasNbt={}",
+                    transactionId, nbt != null);
+            return;
+        }
+        if (nbt == null) {
+            debugLog("opnbt-response-null-nbt:" + pos,
+                    "Drop OP NBT response id={} pos={}: nbt is null",
+                    transactionId, pos);
+            return;
+        }
         if (pos != null && nbt != null) {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.world != null) {
                 if (isStaleExternalResponse(pos, requestedAt)) {
+                    debugLog("opnbt-response-stale:" + pos,
+                            "Drop OP NBT response id={} pos={}: stale response requestedAt={}",
+                            transactionId, pos, requestedAt);
                     return;
                 }
 
@@ -741,6 +834,9 @@ public class RealContainerCache {
                 Map<Integer, ItemStack> items = parseNbtInventory(nbt, client.world.getRegistryManager());
                 NBT_QUERY_CACHE.put(pos.toImmutable(), items);
                 int inferredSlotCount = inferSlotCount(nbt, items);
+                debugLog("opnbt-cache-put:" + pos,
+                        "Cached OP NBT data id={} pos={} itemSlots={} inferredSlotCount={} nbtKeys={}",
+                        transactionId, pos, items.size(), inferredSlotCount, nbt.getKeys());
                 rememberLargeBarrelIfObserved(client, pos, inferredSlotCount);
                 putSlotCount(pos, inferredSlotCount);
                 CACHE_TIME.put(pos.toImmutable(), System.currentTimeMillis());
@@ -763,6 +859,9 @@ public class RealContainerCache {
                         changed |= putSlotCountIfChanged(halves[1], 54);
                         rememberSyncedData(halves, combined);
                         rememberBlockEntityIdentity(pos, halves);
+                        debugLog("opnbt-double-combined:" + pos,
+                                "Combined OP NBT double data pos={} half1={} half2={} itemSlots={}",
+                                pos, halves[0], halves[1], combined.size());
                     }
                 }
 

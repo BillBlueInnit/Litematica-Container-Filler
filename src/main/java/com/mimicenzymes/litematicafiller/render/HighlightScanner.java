@@ -799,6 +799,7 @@ public class HighlightScanner {
                 type = HighlightState.MANUAL_NEEDS_FILL;
             } else if (cached == null) {
                 type = HighlightState.UNKNOWN;
+                RealContainerCache.debugHighlightUnknown(checkPos, "cached-items-null", true);
                 queueHighlightRefresh(checkPos, UNKNOWN_REQUEST_INTERVAL_MS, now);
             } else {
                 Set<Integer> ignoredSlots = getCachedIgnoredSlots(checkPos, client);
@@ -816,6 +817,7 @@ public class HighlightScanner {
         if (!hasJob) return null;
         if (manualCompleted) return HighlightState.MANUAL_COMPLETED;
         if (manualNeedsFill) return HighlightState.MANUAL_NEEDS_FILL;
+        RealContainerCache.debugHighlightUnknown(checkPos, "real-container-area-not-loaded", false);
         return HighlightState.UNKNOWN;
     }
 
