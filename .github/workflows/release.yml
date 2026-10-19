@@ -12,7 +12,7 @@ on:
         type: string
         required: false
       build_branches:
-        description: 'Branches to build, comma-separated, e.g. "1.21.4,26.1". Leave empty to auto-match 1.21, 1.21.*, and 26.*'
+        description: 'Branches to build, comma-separated, e.g. "1.21.4,26.1,26.3". Leave empty to auto-match 1.21, 1.21.*, and 26.*'
         type: string
         required: false
         default: ''
@@ -60,7 +60,7 @@ jobs:
             done | sort -u)
           else
             echo "Using default pattern: branches matching 1.21, 1.21.*, or 26.*"
-            candidate_branches=$(echo "$all_branches" | grep -E '1\.21($|\.)|26\.' || true)
+            candidate_branches=$(echo "$all_branches" | grep -E '^(1\.21($|\.)|26(\.|$))' || true)
           fi
 
           if [ -n "$ignore_list" ]; then
@@ -121,6 +121,12 @@ jobs:
                 ;;
               26.1)
                 printf '26.1\n26.1.1\n26.1.2'
+                ;;
+              26.2)
+                printf '26.2'
+                ;;
+              26.3)
+                printf '26.3'
                 ;;
               *)
                 printf '%s' "$1"
