@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.15-SNAPSHOT'
+    id 'fabric-loom' version '1.17.20'
     id 'maven-publish'
 }
 
@@ -29,10 +29,10 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     modImplementation name: "litematica-fabric-${project.litematica_version}"
     modImplementation name: "malilib-fabric-${project.malilib_version}"
-    modCompileOnly name: 'modmenu-11.0.3'
-    modLocalRuntime name: 'modmenu-11.0.3'
-    modCompileOnly name: 'quickshulker-1.4.5-1.21'
-    modLocalRuntime name: 'quickshulker-1.4.5-1.21'
+    modCompileOnly name: 'modmenu-11.0.5'
+    modLocalRuntime name: 'modmenu-11.0.5'
+    modCompileOnly name: 'quickshulker-3.0.0-1.21.1'
+    modLocalRuntime name: 'quickshulker-3.0.0-1.21.1'
 }
 
 tasks.withType(JavaCompile).configureEach {
