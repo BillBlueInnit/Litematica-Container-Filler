@@ -12,8 +12,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
-import fi.dy.masa.malilib.util.data.tag.CompoundData;
-import fi.dy.masa.malilib.util.data.tag.converter.DataConverterNbt;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.BlockPos;
 
@@ -75,16 +73,15 @@ public class LitematicaPlacementContainerData {
                 for (String regionName : placement.getSubRegionBoxes(RequiredEnabled.PLACEMENT_ENABLED).keySet()) {
                     SubRegionPlacement regionPlacement = placement.getRelativeSubRegionPlacement(regionName);
                     LitematicaBlockStateContainer container = schematic.getSubRegionContainer(regionName);
-                    Map<BlockPos, CompoundData> regionBlockEntities = schematic.getBlockEntityMapForRegion(regionName);
+                    Map<BlockPos, CompoundTag> regionBlockEntities = schematic.getBlockEntityMapForRegion(regionName);
                     if (regionPlacement == null || container == null || regionBlockEntities == null || regionBlockEntities.isEmpty()) {
                         continue;
                     }
 
-                    for (Map.Entry<BlockPos, CompoundData> entry : regionBlockEntities.entrySet()) {
+                    for (Map.Entry<BlockPos, CompoundTag> entry : regionBlockEntities.entrySet()) {
                         BlockPos localPos = entry.getKey();
-                        CompoundData data = entry.getValue();
-                        if (localPos == null || data == null) continue;
-                        CompoundTag nbt = DataConverterNbt.toVanillaCompound(data);
+                        CompoundTag nbt = entry.getValue();
+                        if (localPos == null || nbt == null) continue;
 
                         BlockPos worldPos = toWorldPos(localPos, schematic, regionName, placement, regionPlacement);
                         if (worldPos == null) continue;

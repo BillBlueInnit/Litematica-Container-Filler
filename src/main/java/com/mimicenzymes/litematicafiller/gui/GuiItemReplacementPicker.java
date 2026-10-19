@@ -20,7 +20,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
-import com.mojang.blaze3d.platform.InputConstants;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -288,7 +288,7 @@ public class GuiItemReplacementPicker extends GuiBase {
 
     @Override
     public boolean onKeyTyped(KeyEvent input) {
-        if (input.key() == InputConstants.KEY_ESCAPE) {
+        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
             this.closeToParent();
             return true;
         }
