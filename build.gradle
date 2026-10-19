@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.16.3'
+    id 'fabric-loom' version '1.17.20'
     id 'maven-publish'
 }
 
@@ -45,10 +45,10 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     modImplementation name: "litematica-fabric-${project.litematica_version}"
     modImplementation name: "malilib-fabric-${project.malilib_version}"
-    modCompileOnly name: 'modmenu-17.0.0-beta.2'
-    modLocalRuntime name: 'modmenu-17.0.0-beta.2'
-    modCompileOnly name: 'quickshulker-2.10.0-1.21.11'
-    modLocalRuntime name: 'quickshulker-2.10.0-1.21.11'
+    modCompileOnly name: 'modmenu-17.0.1'
+    modLocalRuntime name: 'modmenu-17.0.1'
+    modCompileOnly name: 'quickshulker-3.1.0-1.21.11'
+    modLocalRuntime name: 'quickshulker-3.1.0-1.21.11'
     modLocalRuntime("me.fallenbreath:conditional-mixin-fabric:0.6.4") {
         transitive = false
     }

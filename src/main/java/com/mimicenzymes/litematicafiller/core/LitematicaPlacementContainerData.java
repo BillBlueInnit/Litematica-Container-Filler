@@ -8,6 +8,8 @@ import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement;
 import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement.RequiredEnabled;
 import fi.dy.masa.litematica.util.PositionUtils;
 import fi.dy.masa.litematica.util.SchematicUtils;
+import fi.dy.masa.malilib.util.data.tag.CompoundData;
+import fi.dy.masa.malilib.util.data.tag.converter.DataConverterNbt;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.item.ItemStack;
@@ -73,15 +75,16 @@ public class LitematicaPlacementContainerData {
                 for (String regionName : placement.getSubRegionBoxes(RequiredEnabled.PLACEMENT_ENABLED).keySet()) {
                     SubRegionPlacement regionPlacement = placement.getRelativeSubRegionPlacement(regionName);
                     LitematicaBlockStateContainer container = schematic.getSubRegionContainer(regionName);
-                    Map<BlockPos, NbtCompound> regionBlockEntities = schematic.getBlockEntityMapForRegion(regionName);
+                    Map<BlockPos, CompoundData> regionBlockEntities = schematic.getBlockEntityMapForRegion(regionName);
                     if (regionPlacement == null || container == null || regionBlockEntities == null || regionBlockEntities.isEmpty()) {
                         continue;
                     }
 
-                    for (Map.Entry<BlockPos, NbtCompound> entry : regionBlockEntities.entrySet()) {
+                    for (Map.Entry<BlockPos, CompoundData> entry : regionBlockEntities.entrySet()) {
                         BlockPos localPos = entry.getKey();
-                        NbtCompound nbt = entry.getValue();
-                        if (localPos == null || nbt == null) continue;
+                        CompoundData data = entry.getValue();
+                        if (localPos == null || data == null) continue;
+                        NbtCompound nbt = DataConverterNbt.toVanillaCompound(data);
 
                         BlockPos worldPos = toWorldPos(localPos, schematic, regionName, placement, regionPlacement);
                         if (worldPos == null) continue;

@@ -21,6 +21,8 @@ import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.util.BlockInfoListType;
 import fi.dy.masa.malilib.util.LayerRange;
+import fi.dy.masa.malilib.util.data.tag.CompoundData;
+import fi.dy.masa.malilib.util.data.tag.converter.DataConverterNbt;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ShulkerBoxBlock;
 import net.minecraft.block.entity.BlockEntity;
@@ -304,7 +306,7 @@ public class FillMaterialCalculator {
 
                 int totalTEs = 0;
                 for (String regionName : schematic.getAreaPositions().keySet()) {
-                    Map<BlockPos, NbtCompound> teMap = schematic.getBlockEntityMapForRegion(regionName);
+                    Map<BlockPos, CompoundData> teMap = schematic.getBlockEntityMapForRegion(regionName);
                     if (teMap != null) totalTEs += teMap.size();
                 }
 
@@ -608,11 +610,12 @@ public class FillMaterialCalculator {
             if (schematic == null) continue;
 
             for (String regionName : getSchematicRegions(schematic, source.regions)) {
-                Map<BlockPos, NbtCompound> teMap = schematic.getBlockEntityMapForRegion(regionName);
+                Map<BlockPos, CompoundData> teMap = schematic.getBlockEntityMapForRegion(regionName);
                 if (teMap == null || teMap.isEmpty()) continue;
 
-                for (NbtCompound nbt : teMap.values()) {
-                    if (nbt == null || !nbt.contains("Items")) continue;
+                for (CompoundData data : teMap.values()) {
+                    if (data == null || !data.containsLenient("Items")) continue;
+                    NbtCompound nbt = DataConverterNbt.toVanillaCompound(data);
 
                     ReplacementResult parsed = replaceInventoryMapWithOrigins(
                             RealContainerCache.parseNbtInventory(nbt, client.world.getRegistryManager()),
@@ -677,7 +680,7 @@ public class FillMaterialCalculator {
         if (schematic == null) return false;
 
         for (String regionName : getSchematicRegions(schematic, selectedRegions)) {
-            Map<BlockPos, NbtCompound> teMap = schematic.getBlockEntityMapForRegion(regionName);
+            Map<BlockPos, CompoundData> teMap = schematic.getBlockEntityMapForRegion(regionName);
             if (teMap != null && !teMap.isEmpty()) return true;
         }
 
